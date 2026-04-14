@@ -6,6 +6,16 @@ import plotly.express as px
 st.set_page_config(page_title="EV Allotment Analytics", layout="wide")
 
 # 2. Data Organization
+# Adding city-specific simulation parameters and compute times
+city_meta = {
+    "San Francisco": {"evs": 6000, "cps": 324, "compute_time": "4.01s"},
+    "Mexico City": {"evs": 3000, "cps": 321, "compute_time": "1.39s"},
+    "Beijing": {"evs": 3000, "cps": 319, "compute_time": "1.255s"},
+    "Mumbai": {"evs": 3000, "cps": 315, "compute_time": "1.395s"},
+    "Bangkok": {"evs": 3000, "cps": 314, "compute_time": "1.187s"},
+    "Cape Town": {"evs": 3000, "cps": 314, "compute_time": "1.128s"}
+}
+
 city_data = {
     "San Francisco": [
         {"Algorithm": "MinWaitMaxEarn", "Total Wait": 61.74, "Prosumer Wait": 4.05, "Consumer Wait": 119.44, "CP Idle Time": 0.00},
@@ -59,19 +69,25 @@ city_data = {
 
 # 3. Sidebar and Header
 st.title("⚡ EV Allotment Analytics")
-st.markdown("### Custom Algorithmic Comparison")
-
 st.sidebar.header("Configuration")
 selected_city = st.sidebar.selectbox("Select City", list(city_data.keys()))
 
+# Display Simulation Metadata for the Selected City
+meta = city_meta[selected_city]
+st.markdown(f"""
+### {selected_city} Simulation Environment
+- **Total EVs:** {meta['evs']:,}
+- **Total Charging Points (CPs):** {meta['cps']}
+- **Compute Calculation Time:** `{meta['compute_time']}`
+---
+""")
+
 st.sidebar.subheader("Metrics to Compare")
-# Individual checkboxes for each metric
 show_total = st.sidebar.checkbox("Total Wait", value=True)
 show_prosumer = st.sidebar.checkbox("Prosumer Wait", value=False)
 show_consumer = st.sidebar.checkbox("Consumer Wait", value=False)
 show_idle = st.sidebar.checkbox("CP Idle Time", value=True)
 
-# Build selected_metrics list based on checkboxes
 selected_metrics = []
 if show_total: selected_metrics.append("Total Wait")
 if show_prosumer: selected_metrics.append("Prosumer Wait")
@@ -82,12 +98,10 @@ if not selected_metrics:
     st.error("Please select at least one metric to visualize.")
     st.stop()
 
-# 4. Calculation of Winners (Handles multiple winners with same CP Idle Time)
+# 4. Calculation of Winners
 df = pd.DataFrame(city_data[selected_city])
 min_idle = df["CP Idle Time"].min()
 winners_df = df[df["CP Idle Time"] == min_idle]
-
-# If there's a tie in idle time, we look for the one with the best Total Wait among winners
 best_overall_row = winners_df.sort_values(by="Total Wait").iloc[0]
 winner_names = ", ".join(winners_df["Algorithm"].tolist())
 
@@ -110,8 +124,8 @@ fig = px.bar(
     y="Value", 
     color="Metric", 
     barmode="group",
-    title=f"Comparison for {selected_city}",
-    labels={"Value": "Time (Mins)"},  # Updated Y-axis label
+    title=f"Algorithmic Performance Comparison for {selected_city}",
+    labels={"Value": "Time (Mins)"},
     color_discrete_map={
         "Total Wait": "#3b82f6",
         "Prosumer Wait": "#ef4444",
@@ -126,11 +140,9 @@ st.plotly_chart(fig, use_container_width=True)
 st.subheader("Detailed Metric Breakdown")
 
 def highlight_winners(s):
-    # Highlight all rows that have the minimum CP Idle Time
     is_winner = s["CP Idle Time"] == min_idle
     return ['background-color: rgba(16, 185, 129, 0.2)' if is_winner else '' for _ in s]
 
-# Applying styles to the table
 formatted_df = df[["Algorithm"] + selected_metrics]
 st.dataframe(
     formatted_df.style.apply(highlight_winners, axis=1)
