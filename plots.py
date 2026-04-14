@@ -107,10 +107,11 @@ df_melted = df_plot.melt(id_vars="Algorithm", var_name="Metric", value_name="Val
 fig = px.bar(
     df_melted, 
     x="Algorithm", 
-    y="Time(Mins)", 
+    y="Value", 
     color="Metric", 
     barmode="group",
     title=f"Comparison for {selected_city}",
+    labels={"Value": "Time (Mins)"},  # Updated Y-axis label
     color_discrete_map={
         "Total Wait": "#3b82f6",
         "Prosumer Wait": "#ef4444",
