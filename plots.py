@@ -64,29 +64,41 @@ st.markdown("### Custom Algorithmic Comparison")
 st.sidebar.header("Configuration")
 selected_city = st.sidebar.selectbox("Select City", list(city_data.keys()))
 
-all_metrics = ["Total Wait", "Prosumer Wait", "Consumer Wait", "CP Idle Time"]
-selected_metrics = st.sidebar.multiselect(
-    "Select Metrics to Compare",
-    all_metrics,
-    default=["CP Idle Time", "Total Wait"]
-)
+st.sidebar.subheader("Metrics to Compare")
+# Individual checkboxes for each metric
+show_total = st.sidebar.checkbox("Total Wait", value=True)
+show_prosumer = st.sidebar.checkbox("Prosumer Wait", value=False)
+show_consumer = st.sidebar.checkbox("Consumer Wait", value=False)
+show_idle = st.sidebar.checkbox("CP Idle Time", value=True)
+
+# Build selected_metrics list based on checkboxes
+selected_metrics = []
+if show_total: selected_metrics.append("Total Wait")
+if show_prosumer: selected_metrics.append("Prosumer Wait")
+if show_consumer: selected_metrics.append("Consumer Wait")
+if show_idle: selected_metrics.append("CP Idle Time")
 
 if not selected_metrics:
     st.error("Please select at least one metric to visualize.")
     st.stop()
 
-# 4. Calculation of Best Algorithm (Always based on CP Idle Time for consistency)
+# 4. Calculation of Winners (Handles multiple winners with same CP Idle Time)
 df = pd.DataFrame(city_data[selected_city])
-best_row = df.sort_values(by=["CP Idle Time", "Total Wait"]).iloc[0]
+min_idle = df["CP Idle Time"].min()
+winners_df = df[df["CP Idle Time"] == min_idle]
+
+# If there's a tie in idle time, we look for the one with the best Total Wait among winners
+best_overall_row = winners_df.sort_values(by="Total Wait").iloc[0]
+winner_names = ", ".join(winners_df["Algorithm"].tolist())
 
 # 5. Key Metrics Visualization
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Infrastructure Winner", best_row["Algorithm"])
+    st.metric("Infrastructure Winner(s)", winner_names)
 with col2:
-    st.metric("Lowest CP Idle Time", f"{best_row['CP Idle Time']:.2f} units")
+    st.metric("Lowest CP Idle Time", f"{min_idle:.2f} units")
 with col3:
-    st.metric("Associated Total Wait", f"{best_row['Total Wait']:.2f} min")
+    st.metric("Top Winner Total Wait", f"{best_overall_row['Total Wait']:.2f} min")
 
 # 6. Charting
 df_plot = df[["Algorithm"] + selected_metrics]
@@ -112,14 +124,15 @@ st.plotly_chart(fig, use_container_width=True)
 # 7. Styled Data Table
 st.subheader("Detailed Metric Breakdown")
 
-def highlight_best_idle(s):
-    is_best = s["CP Idle Time"] == best_row["CP Idle Time"]
-    return ['background-color: rgba(16, 185, 129, 0.2)' if is_best else '' for _ in s]
+def highlight_winners(s):
+    # Highlight all rows that have the minimum CP Idle Time
+    is_winner = s["CP Idle Time"] == min_idle
+    return ['background-color: rgba(16, 185, 129, 0.2)' if is_winner else '' for _ in s]
 
 # Applying styles to the table
 formatted_df = df[["Algorithm"] + selected_metrics]
 st.dataframe(
-    formatted_df.style.apply(highlight_best_idle, axis=1)
+    formatted_df.style.apply(highlight_winners, axis=1)
             .format({m: "{:.2f}" + ("m" if "Wait" in m else "") for m in selected_metrics})
             .highlight_min(subset=[m for m in selected_metrics if m == "CP Idle Time"], color="#10b981")
 )
