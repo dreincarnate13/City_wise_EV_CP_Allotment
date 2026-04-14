@@ -102,7 +102,7 @@ with col3:
 
 # 6. Charting
 df_plot = df[["Algorithm"] + selected_metrics]
-df_melted = df_plot.melt(id_vars="Algorithm", var_name="Metric", value_name="Value")
+df_melted = df_plot.melt(id_vars="Algorithm", var_name="Metric", value_name="Time (Mins)")
 
 fig = px.bar(
     df_melted, 
