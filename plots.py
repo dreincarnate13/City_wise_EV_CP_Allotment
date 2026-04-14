@@ -107,7 +107,7 @@ df_melted = df_plot.melt(id_vars="Algorithm", var_name="Metric", value_name="Val
 fig = px.bar(
     df_melted, 
     x="Algorithm", 
-    y="Value", 
+    y="Time(Mins)", 
     color="Metric", 
     barmode="group",
     title=f"Comparison for {selected_city}",
